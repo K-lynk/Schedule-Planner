@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mobile Day Planner</title>
+<style>
+  body { margin:0; font-family:Arial,sans-serif; background:#fff; color:#000; display:flex; flex-direction:column; height:100vh; }
+  header { text-align:center; padding:15px; font-size:24px; font-weight:bold; border-bottom:1px solid #ccc; }
+  #timeline { flex:1; overflow-y:auto; padding:10px; position:relative; }
+  .hour-row { height:40px; border-bottom:1px solid #eee; position:relative; }
+  .hour-label { position:absolute; left:0; width:50px; text-align:right; padding-right:10px; font-size:12px; top:0; }
+  .activity { position:absolute; left:60px; right:10px; border-radius:4px; color:#fff; padding:4px; font-size:14px; word-wrap: break-word; }
+  #input-bar { position:sticky; bottom:0; display:flex; border-top:1px solid #ccc; padding:8px; background:#f9f9f9; z-index:100; }
+  #activity-input { flex:1; padding:8px; font-size:14px; }
+  #add-btn, #reset-btn { margin-left:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
+  @media (max-width:600px) { .hour-label { width:40px; font-size:11px; } .activity { font-size:13px; padding:3px; } #activity-input, #add-btn, #reset-btn { font-size:13px; padding:6px; } }
+</style>
+</head>
+<body>
+<header>Day Planner</header>
+<div id="timeline"></div>
+<div id="input-bar">
+  <input type="text" id="activity-input" placeholder="Type activity here">
+  <button id="add-btn">Add</button>
+  <button id="reset-btn">Reset Plan</button>
+</div>
+<script>
+const timeline = document.getElementById('timeline');
+let selectedRow = null;
+const startHour = 6, endHour = 24, blockHeight = 40;
+
+// Create timeline rows
+for (let h = startHour; h < endHour; h++) {
+  for (let half=0; half<2; half++) {
+    const row = document.createElement('div');
+    row.className = 'hour-row';
+    row.dataset.time = h + ':' + (half===0?'00':'30');
+    const label = document.createElement('div');
+    label.className='hour-label';
+    if (half===0) label.textContent = (h>12?h-12:h)+(h>=12?' PM':' AM');
+    row.appendChild(label);
+    timeline.appendChild(row);
+    row.addEventListener('click',()=>{ if(selectedRow) selectedRow.style.background=''; selectedRow=row; selectedRow.style.background='#e0e0e0'; });
+  }
+}
+
+function randomColor(){ const colors=['#FF6B6B','#6BCB77','#4D96FF','#FFC75F','#845EC2','#FF9671']; return colors[Math.floor(Math.random()*colors.length)]; }
+
+function savePlan(){
+  const activities=[];
+  document.querySelectorAll('.activity').forEach(a=>{
+    activities.push({text:a.textContent, top:a.style.top, color:a.style.background});
+  });
+  localStorage.setItem('dayPlan', JSON.stringify(activities));
+}
+
+function loadPlan(){
+  const saved = JSON.parse(localStorage.getItem('dayPlan')||'[]');
+  saved.forEach(a=>{
+    const act = document.createElement('div');
+    act.className='activity';
+    act.textContent=a.text;
+    act.style.top=a.top;
+    act.style.height=blockHeight+'px';
+    act.style.background=a.color;
+    timeline.appendChild(act);
+  });
+}
+
+function addActivity(){
+  const input=document.getElementById('activity-input');
+  const text=input.value.trim();
+  if(!text){ alert('Enter activity!'); return; }
+  if(!selectedRow){ alert('Select a time slot first!'); return; }
+  const activity=document.createElement('div');
+  activity.className='activity';
+  activity.textContent=text;
+  activity.style.top=selectedRow.offsetTop+'px';
+  activity.style.height=blockHeight+'px';
+  activity.style.background=randomColor();
+  timeline.appendChild(activity);
+  activity.scrollIntoView({behavior:'smooth', block:'center'});
+  input.value=''; selectedRow.style.background=''; selectedRow=null;
+  savePlan();
+}
+
+function resetPlan(){
+  if(confirm('Are you sure you want to reset the plan?')){
+    timeline.innerHTML='';
+    localStorage.removeItem('dayPlan');
+    for (let h = startHour; h < endHour; h++) {
+      for (let half=0; half<2; half++) {
+        const row=document.createElement('div');
+        row.className='hour-row';
+        row.dataset.time=h+':' + (half===0?'00':'30');
+        const label=document.createElement('div');
+        label.className='hour-label';
+        if (half===0) label.textContent=(h>12?h-12:h)+(h>=12?' PM':' AM');
+        row.appendChild(label);
+        timeline.appendChild(row);
+        row.addEventListener('click',()=>{ if(selectedRow) selectedRow.style.background=''; selectedRow=row; selectedRow.style.background='#e0e0e0'; });
+      }
+    }
+  }
+}
+
+document.getElementById('add-btn').addEventListener('click', addActivity);
+document.getElementById('reset-btn').addEventListener('click', resetPlan);
+document.getElementById('activity-input').addEventListener('keypress',e=>{if(e.key==='Enter') addActivity();});
+
+loadPlan();
+</script>
+</body>
+</html>
